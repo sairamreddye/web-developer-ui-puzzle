@@ -1,4 +1,4 @@
-import { HttpService, Injectable } from '@nestjs/common';
+import { HttpService, HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { Book } from '@tmo/shared/models';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -16,6 +16,7 @@ export class BooksService {
       .get(`https://www.googleapis.com/books/v1/volumes?q=${term}`)
       .pipe(
         map(resp => {
+          if (resp?.data?.items) {
           return resp.data.items.map(item => {
             return {
               id: item.id,
@@ -28,7 +29,10 @@ export class BooksService {
                 : undefined,
               coverUrl: item.volumeInfo?.imageLinks?.thumbnail
             };
-          });
+          })
+        } else {
+          throw new HttpException('No Results Found for search Criteria', HttpStatus.NOT_FOUND);
+        }
         })
       );
   }
