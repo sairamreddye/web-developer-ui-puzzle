@@ -5,19 +5,26 @@ import { ReadingListComponent } from './reading-list.component';
 import { BooksFeatureModule } from '@tmo/books/feature';
 import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import { ReadingListItem } from '@tmo/shared/models';
-import { getReadingList, removeFromReadingList } from '@tmo/books/data-access';
+import { getReadingList, removeFromReadingList, addToReadingList } from '@tmo/books/data-access';
+import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { OverlayContainer } from '@angular/cdk/overlay';
 
 describe('ReadingListComponent', () => {
   let component: ReadingListComponent;
   let fixture: ComponentFixture<ReadingListComponent>;
   let store: MockStore;
+  let overlayContainerElement: HTMLElement;
+  let spyTest: any;
+  let oc: OverlayContainer;
 
   beforeEach(async(() => {
     TestBed.configureTestingModule({
-      imports: [BooksFeatureModule, SharedTestingModule],
+      imports: [BooksFeatureModule, SharedTestingModule, NoopAnimationsModule],
       providers: [provideMockStore({ initialState: { items: {} } }),]
     }).compileComponents();
     store = TestBed.inject(MockStore);
+    oc = TestBed.inject(OverlayContainer);
+    overlayContainerElement = oc.getContainerElement();
   }));
 
   beforeEach(() => {
@@ -25,7 +32,7 @@ describe('ReadingListComponent', () => {
     component = fixture.componentInstance;
     store.overrideSelector(getReadingList, []);
     fixture.detectChanges();
-    spyOn(store, 'dispatch').and.callThrough();
+    spyTest = spyOn(store, 'dispatch').and.callThrough();
   });
 
   afterEach(() => {
@@ -39,5 +46,15 @@ describe('ReadingListComponent', () => {
     const book: ReadingListItem = createReadingListItem('B');
     component.removeFromReadingList(book);
     expect(store.dispatch).toHaveBeenCalledWith(removeFromReadingList({ item: book }));
+  });
+
+  it('should remove book from reading list and trigger UNDO action', () => {
+    const book: ReadingListItem = createReadingListItem('B');
+    component.removeFromReadingList(book);
+    const buttonElement: HTMLElement = overlayContainerElement.querySelector('.mat-simple-snackbar-action > button');
+    buttonElement?.click();
+    expect(store.dispatch).toHaveBeenCalledWith(removeFromReadingList({ item: book }));
+    expect(store.dispatch).toHaveBeenCalledTimes(2);
+    expect(spyTest).toHaveBeenCalledWith(addToReadingList({book: {...book, id: 'B'}}));
   });
 });
